@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Callable
 import socket
-from threading import Thread
+from PyQt6.QtCore import QThread, pyqtSignal
 
 
 class ERequest(Enum):
@@ -41,27 +41,31 @@ class EResponse(Enum):
         return None
 
 
-class RequestHandler:
-    BUFFER_SIZE = 1024
+def resolve_request(data: bytes) -> (ERequest, bytes):
+    request = int.from_bytes(data[0:2], byteorder='big', signed=False)
+    request = ERequest.from_value(request)
+    args = data[2:]
+    return request, args
 
-    def __init__(self, client: socket.socket, handler: Callable[[ERequest, list], EResponse]):
+
+class RequestHandler(QThread):
+    BUFFER_SIZE = 1024
+    proc = pyqtSignal(ERequest, bytes, EResponse)
+
+    def __init__(self,
+                 client: socket.socket,
+                 handler: Callable[[ERequest, bytes], EResponse]):
+        super(RequestHandler, self).__init__()
+
         self.client = client
         self.handler = handler
 
-        self.__thread = Thread(
-            target=RequestHandler.__loop,
-            args=(self.client, self.handler))
-        self.__thread.start()
-
-    @staticmethod
-    def __loop(client: socket.socket, handler: Callable[[ERequest, list], EResponse]):
+    def run(self):
         while True:
-            data = client.recv(RequestHandler.BUFFER_SIZE)
+            data = self.client.recv(RequestHandler.BUFFER_SIZE)
+            request, args = resolve_request(data)
 
-            request = int.from_bytes(data[0:2], byteorder='big')
-            request = ERequest.from_value(request)
-            args = data[2:]
+            response = self.handler(request, args)
+            self.client.send(int.to_bytes(response.value, byteorder='big', length=2, signed=False))
 
-
-    def handle(self, request: ERequest, *args) -> EResponse:
-        return self.handler(request, *args)
+            self.proc(request, args, response)
