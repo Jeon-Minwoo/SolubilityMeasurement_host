@@ -5,13 +5,14 @@ import socket
 from PyQt6.QtCore import QThread, pyqtSignal
 
 
-    return request, args
-
-
 class Interactor(QThread):
     """
+    An interactor thread to a client socket.
+    It sends, receives request or response to pass it to the MainWindow.
+    """
     BUFFER_SIZE = 1024
-    proc = pyqtSignal(ERequest, bytes, EResponse)
+    MAX_REQ_ID = 0xFF
+    CLIENT_REQ_ID = -1
     received_signal = pyqtSignal(int, EResponse, bytes)
 
     def __init__(self,
@@ -26,13 +27,32 @@ class Interactor(QThread):
         """
         Main routine for this thread.
         :return: None
+        """
         while True:
+            # receive data
             data = self.client.recv(Interactor.BUFFER_SIZE)
-            request, args = resolve_request(data)
+            bundle = Bundle.from_bytes(data)
+            request_id, request, args, response = bundle
 
-            self.client.send(int.to_bytes(response.value, byteorder='big', length=2, signed=False))
-            self.proc(request, args, response)
+            if request_id == Interactor.CLIENT_REQ_ID:
+                # handle it if it's a request
+                response = self.handler(request, args)
+                self.client.send(response.bytes())
+                bundle.response = response
+            else:
+                # if response, send bundle to window via signal
+                self.received_signal.emit(request_id, response, args)
 
-    def request(self, request: ERequest, args: bytes):
-        data = b''.join([request.bytes(), args])
-        self.client.send(data)
+    def request(self, request_id: int, request: ERequest, args: bytes) -> None:
+        """
+        Send a request with specified request ID.
+        :param request_id: The ID of a new request.
+        :param request: The request flag.
+        :param args: The arguments for the request.
+        :return: None
+        """
+        if request_id > Interactor.MAX_REQ_ID:
+            raise ValueError('Out of request id range.')
+
+        bundle = Bundle(request_id, request, args=args)
+        self.client.send(bundle.bytes())
