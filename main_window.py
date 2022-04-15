@@ -12,7 +12,7 @@ class MainWindow(QThread):
     A wrapper class for PyQt MainWindow.
     It's also a bridge between server socket and clients.
     """
-    PORT = 10001
+    PORT = 58431
 
     def __init__(self):
         super(MainWindow, self).__init__()

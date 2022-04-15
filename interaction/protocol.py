@@ -11,8 +11,8 @@ class Interactor(QThread):
     It sends, receives request or response to pass it to the MainWindow.
     """
     BUFFER_SIZE = 1024
-    MAX_REQ_ID = 0xFF
-    CLIENT_REQ_ID = -1
+    MAX_REQ_ID = 255
+    CLIENT_REQ_ID = 256
     received_signal = pyqtSignal(int, EResponse, bytes)
 
     def __init__(self,
