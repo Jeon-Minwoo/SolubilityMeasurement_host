@@ -25,7 +25,6 @@ class MainWindow(QThread):
         self.camera_handler = None
         self.display_handler = None
         self.request_id = 0
-        self.request_data_map = {}
 
         # start socket thread
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -42,30 +41,28 @@ class MainWindow(QThread):
                 # accept client to evaluate
                 client, address = self.server.accept()
                 data = client.recv(Interactor.BUFFER_SIZE)
-                _, role, _, _ = Bundle.from_bytes(data)
+                bundle = Bundle.from_bytes(data)
+                role = bundle.request
 
                 # evaluate proposed role
-                response: EResponse
                 if role == ERequest.CAMERA:
                     if self.camera_handler is not None:
-                        response = EResponse.ERROR
+                        bundle.response = EResponse.ERROR
                     else:
-                        camera_handler = Interactor(client, MainWindow.handle_camera)
+                        camera_handler = Interactor(client, MainWindow.handle_client_request)
                         camera_handler.received_signal.connect(self.digest_response)
-                        response = EResponse.OK
-                        MainWindow.handle_camera(role, b'')
+                        bundle.response = EResponse.OK
                 elif role == ERequest.DISPLAY:
                     if self.camera_handler is not None:
-                        response = EResponse.ERROR
+                        bundle.response = EResponse.ERROR
                     else:
-                        display_handler = Interactor(client, MainWindow.handle_display)
+                        display_handler = Interactor(client, MainWindow.handle_client_request)
                         display_handler.received_signal.connect(self.digest_response)
-                        response = EResponse.OK
-                        MainWindow.handle_display(role, b'')
+                        bundle.response = EResponse.OK
                 else:
-                    response = EResponse.ERROR
+                    bundle.response = EResponse.ERROR
 
-                client.send(response.bytes())
+                MainWindow.handle_client_request(bundle)
         Thread(target=listen, args=()).start()
 
     def show(self):
@@ -92,54 +89,38 @@ class MainWindow(QThread):
         if self.request_id > Interactor.MAX_REQ_ID:
             self.request_id = 0
 
-        self.request_data_map[self.request_id] = (request, args)
         interactor.request(self.request_id, request, args)
 
     @pyqtSlot(Bundle)
-    def digest_response(self, request_id: int, response: EResponse, args: bytes) -> None:
+    def digest_response(self, bundle: Bundle) -> None:
         """
         Handles response for host request.
-        :param request_id: The ID of the host request.
-        :param response: The response flag.
-        :param args: The arguments for the request.
+        :param bundle: The bundle instance for the request.
         :return: None
         """
-        request, request_args = self.request_data_map[request_id]
-        del self.request_data_map[request_id]
         # TODO: digest_response()
+        if bundle.request == ERequest.CAMERA_TAKE_PICTURE:
+            pass
+        elif bundle.request == ERequest.CAMERA_TOGGLE_TORCH:
+            pass
+        elif bundle.request == ERequest.DISPLAY_TAKE_PICTURE:
+            pass
+        elif bundle.request == ERequest.DISPLAY_SHOW_PICTURE:
+            pass
 
     @staticmethod
-    def handle_camera(request: ERequest, args: bytes) -> EResponse:
+    def handle_client_request(bundle: Bundle) -> Bundle:
         """
         Handles request from camera client.
-        :param request: The request flag.
-        :param args: The arguments for the request.
+        :param bundle: The bundle for the request.
         :return: Response flag for the request.
         """
-        response: EResponse = EResponse.NONE
-        if request == ERequest.CAMERA:
-            response = EResponse.OK
-        # TODO: other requests
+        if bundle.request == ERequest.ANY_QUIT:
+            bundle.response = EResponse.ACK
+            # TODO: show in dashboard
         else:
-            response = EResponse.REJECT
+            bundle.response = EResponse.REJECT
 
-        return response
-
-    @staticmethod
-    def handle_display(request: ERequest, args: bytes) -> EResponse:
-        """
-        Handles request from display client.
-        :param request: The request flag.
-        :param args: The arguments for the request.
-        :return: Response flag for the request.
-        """
-        response: EResponse = EResponse.NONE
-        if request == ERequest.DISPLAY:
-            response = EResponse.OK
-        # TODO: other requests
-        else:
-            response = EResponse.REJECT
-
-        return response
+        return bundle
 
     # endregion

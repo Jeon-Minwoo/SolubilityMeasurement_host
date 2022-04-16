@@ -13,11 +13,11 @@ class Interactor(QThread):
     BUFFER_SIZE = 1024
     MAX_REQ_ID = 255
     CLIENT_REQ_ID = 256
-    received_signal = pyqtSignal(int, EResponse, bytes)
+    received_signal = pyqtSignal(Bundle)
 
     def __init__(self,
                  client: socket.socket,
-                 handler: Callable[[ERequest, bytes], EResponse]):
+                 handler: Callable[[Bundle], Bundle]):
         super(Interactor, self).__init__()
 
         self.client = client
@@ -30,18 +30,24 @@ class Interactor(QThread):
         """
         while True:
             # receive data
-            data = self.client.recv(Interactor.BUFFER_SIZE)
+            data = b''
+            while True:
+                buffer = self.client.recv(Interactor.BUFFER_SIZE)
+                if len(data) > 0:
+                    data += buffer
+                else:
+                    break
+
             bundle = Bundle.from_bytes(data)
             request_id, request, args, response = bundle
 
             if request_id == Interactor.CLIENT_REQ_ID:
                 # handle it if it's a request
-                response = self.handler(request, args)
-                self.client.send(response.bytes())
-                bundle.response = response
+                response_bundle = self.handler(bundle)
+                self.client.send(response_bundle.bytes())
             else:
                 # if response, send bundle to window via signal
-                self.received_signal.emit(request_id, response, args)
+                self.received_signal.emit(bundle)
 
     def request(self, request_id: int, request: ERequest, args: bytes) -> None:
         """
