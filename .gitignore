@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.idea/misc.xml
+.idea/workspace.xml
+.idea/SolubilityAnalysis.iml
