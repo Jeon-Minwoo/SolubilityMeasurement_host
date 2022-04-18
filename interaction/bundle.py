@@ -31,6 +31,17 @@ class Bundle:
             self.response.bytes(),
             self.args])
 
+    def __str__(self):
+        """
+        Turn this instance into a description string.
+        This won't show the {args} value but shows if the {args} value exists.
+        :return: The description string.
+        """
+        return str([self.request_id,
+                    self.request.int(),
+                    'args' if self.args is not None else 'None',
+                    self.response.int()])
+
     def __iter__(self):
         return iter([self.request_id, self.request, self.args, self.response])
 
