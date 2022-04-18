@@ -53,7 +53,7 @@ class MainWindow(QThread):
                         camera_handler.received_signal.connect(self.digest_response)
                         bundle.response = EResponse.OK
                 elif role == ERequest.DISPLAY:
-                    if self.camera_handler is not None:
+                    if self.display_handler is not None:
                         bundle.response = EResponse.ERROR
                     else:
                         display_handler = Interactor(client, MainWindow.handle_client_request)
