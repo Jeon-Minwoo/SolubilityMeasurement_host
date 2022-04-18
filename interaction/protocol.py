@@ -49,16 +49,13 @@ class Interactor(QThread):
                 # if response, send bundle to window via signal
                 self.received_signal.emit(bundle)
 
-    def request(self, request_id: int, request: ERequest, args: bytes) -> None:
+    def request(self, bundle: Bundle) -> None:
         """
         Send a request with specified request ID.
-        :param request_id: The ID of a new request.
-        :param request: The request flag.
-        :param args: The arguments for the request.
+        :param bundle: The request bundle
         :return: None
         """
-        if request_id > Interactor.MAX_REQ_ID:
+        if bundle.request_id > Interactor.MAX_REQ_ID:
             raise ValueError('Out of request id range.')
 
-        bundle = Bundle(request_id, request, args=args)
         self.client.send(bundle.bytes())
