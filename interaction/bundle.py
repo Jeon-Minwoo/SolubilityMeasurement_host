@@ -1,4 +1,4 @@
-from byte_enum import ERequest, EResponse
+from interaction.byte_enum import ERequest, EResponse
 
 
 class Bundle:

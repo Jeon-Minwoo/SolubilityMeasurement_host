@@ -1,8 +1,7 @@
 from enum import Enum, EnumMeta
-from abc import ABC
 
 
-class ByteEnum(Enum, ABC):
+class ByteEnum(Enum):
     """
     An abstract enum class.
     Elements of this enum must be able to be serialized.
@@ -36,20 +35,20 @@ class ERequest(ByteEnum):
     """A flag for requests from camera clients."""
     DISPLAY = 0x02
     """A flag for requests from display clients."""
-    ANY = CAMERA.int() | DISPLAY.int()
+    ANY = CAMERA | DISPLAY
     """A flag for requests from any clients."""
 
-    CAMERA_TAKE_PICTURE = CAMERA.int() | 0x10
+    CAMERA_TAKE_PICTURE = CAMERA | 0x10
     """Request to make camera to take a picture."""
-    CAMERA_TOGGLE_TORCH = CAMERA.int() | 0x20
+    CAMERA_TOGGLE_TORCH = CAMERA | 0x20
     """Request to make camera to turn on/off the flashlight."""
 
-    DISPLAY_TAKE_PICTURE = DISPLAY.int() | 0x10
+    DISPLAY_TAKE_PICTURE = DISPLAY | 0x10
     """Request to make display to take a picture."""
-    DISPLAY_SHOW_PICTURE = DISPLAY.int() | 0x20
+    DISPLAY_SHOW_PICTURE = DISPLAY | 0x20
     """Request to make display to display an image."""
 
-    ANY_QUIT = ANY.int() | 0x10
+    ANY_QUIT = ANY | 0x10
     """Request to terminate connection."""
 
     def is_for(self, request):

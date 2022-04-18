@@ -1,7 +1,9 @@
 import socket
 from threading import Thread
 from PyQt6.QtCore import QThread
-from interaction.protocol import Interactor, Bundle, ERequest, EResponse
+from interaction.protocol import Interactor
+from interaction.bundle import Bundle
+from interaction.byte_enum import ERequest, EResponse
 
 i = 0
 
@@ -59,7 +61,8 @@ class MainConsole(QThread):
         self.request_id = 0
 
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.bind((socket.INADDR_ANY, MainConsole.PORT))
+        self.server.bind(('0.0.0.0', MainConsole.PORT))
+        self.server.listen(10)
 
     def run(self) -> None:
         # start socket thread

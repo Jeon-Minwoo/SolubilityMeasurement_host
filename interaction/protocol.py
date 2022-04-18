@@ -1,5 +1,4 @@
-from byte_enum import ERequest, EResponse
-from bundle import Bundle
+from interaction.bundle import Bundle
 from typing import Callable
 import socket
 from PyQt6.QtCore import QThread, pyqtSignal

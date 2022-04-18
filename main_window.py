@@ -3,8 +3,9 @@ from PyQt6.QtCore import QThread, pyqtSlot
 from threading import Thread
 import socket
 
+from interaction.protocol import Interactor
 from interaction.bundle import Bundle
-from interaction.protocol import ERequest, EResponse, Interactor
+from interaction.byte_enum import ERequest, EResponse
 
 
 class MainWindow(QThread):
@@ -17,7 +18,7 @@ class MainWindow(QThread):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        form_class, window_class = uic.loadUiType("MainWindow.ui")
+        form_class, window_class = uic.loadUiType("MainWindow.ui")[0]
         self.window = window_class()
         self.form = form_class()
         self.form.setupUi(self.window)
