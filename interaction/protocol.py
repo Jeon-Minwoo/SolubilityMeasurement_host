@@ -1,7 +1,7 @@
 from interaction.bundle import Bundle
 from typing import Callable
 import socket
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread
 
 
 class Interactor(QThread):
@@ -12,15 +12,16 @@ class Interactor(QThread):
     BUFFER_SIZE = 1024
     MAX_REQ_ID = 254
     CLIENT_REQ_ID = 255
-    received_signal = pyqtSignal(Bundle)
 
     def __init__(self,
                  client: socket.socket,
-                 handler: Callable[[Bundle], Bundle]):
+                 request_handler: Callable[[Bundle], Bundle],
+                 response_handler: Callable[[Bundle], None]):
         super(Interactor, self).__init__()
 
         self.client = client
-        self.handler = handler
+        self.request_handler = request_handler
+        self.response_handler = response_handler
 
     def run(self) -> None:
         """
@@ -30,23 +31,25 @@ class Interactor(QThread):
         while True:
             # receive data
             data = b''
-            while True:
+            while self.client:
+                # TODO: receiving all data from the socket
                 buffer = self.client.recv(Interactor.BUFFER_SIZE)
-                if len(data) > 0:
+                if len(buffer) > 0:
                     data += buffer
                 else:
                     break
+                print('Total:', len(data), 'bytes,', len(buffer))
 
             bundle = Bundle.from_bytes(data)
             request_id, request, args, response = bundle
 
             if request_id == Interactor.CLIENT_REQ_ID:
                 # handle it if it's a request
-                response_bundle = self.handler(bundle)
+                response_bundle = self.request_handler(bundle)
                 self.client.send(response_bundle.bytes())
             else:
                 # if response, send bundle to window via signal
-                self.received_signal.emit(bundle)
+                self.response_handler(bundle)
 
     def request(self, bundle: Bundle) -> None:
         """

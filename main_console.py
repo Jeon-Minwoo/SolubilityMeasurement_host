@@ -2,7 +2,6 @@ import socket
 from threading import Thread
 from PyQt6.QtCore import QThread
 
-import interaction.protocol
 from interaction.protocol import Interactor
 from interaction.bundle import Bundle
 from interaction.byte_enum import ERequest, EResponse
@@ -143,8 +142,8 @@ class MainConsole(QThread):
                     bundle.response = EResponse.ERROR
                 else:
                     print(f'Listen: camera, ok')
-                    self.camera_handler = Interactor(client, handle_client_request)
-                    self.camera_handler.received_signal.connect(digest_response)
+                    self.camera_handler = Interactor(client, handle_client_request, digest_response)
+                    self.camera_handler.start()
                     bundle.response = EResponse.OK
             elif role == ERequest.DISPLAY:
                 if self.display_handler is not None:
@@ -152,8 +151,8 @@ class MainConsole(QThread):
                     bundle.response = EResponse.ERROR
                 else:
                     print(f'Listen: display, ok')
-                    self.display_handler = Interactor(client, handle_client_request)
-                    self.display_handler.received_signal.connect(digest_response)
+                    self.display_handler = Interactor(client, handle_client_request, digest_response)
+                    self.display_handler.start()
                     bundle.response = EResponse.OK
             else:
                 print(f'Listen: unknown')
