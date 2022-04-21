@@ -26,7 +26,7 @@ class Bundle:
         :return: Serialize this bundle into byte array.
         """
         return b''.join([
-            bytes(self.request_id),
+            bytes([self.request_id]),
             self.request.bytes(),
             self.response.bytes(),
             self.args])
@@ -39,7 +39,7 @@ class Bundle:
         """
         return str([self.request_id,
                     self.request.int(),
-                    'args' if self.args is not None else 'None',
+                    'args' if self.args is not None and len(self.args) > 0 else 'None',
                     self.response.int()])
 
     def __iter__(self):

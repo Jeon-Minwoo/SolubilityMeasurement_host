@@ -1,6 +1,8 @@
 import socket
 from threading import Thread
 from PyQt6.QtCore import QThread
+
+import interaction.protocol
 from interaction.protocol import Interactor
 from interaction.bundle import Bundle
 from interaction.byte_enum import ERequest, EResponse
@@ -67,40 +69,52 @@ class MainConsole(QThread):
     def run(self) -> None:
         # start socket thread
         Thread(target=MainConsole.listen, args=(self,)).start()
+
         while True:
             line = input().split(' ')
-            bundle: Bundle = Bundle(-1, ERequest.NONE)
-            if line[0] == 'cmd':
-                if line[1] == '-c':
-                    if line[2] == 'camera':
-                        bundle.request = ERequest.CAMERA_TAKE_PICTURE
-                    elif line[2] == 'display':
-                        bundle.request = ERequest.DISPLAY_TAKE_PICTURE
+
+            self.request_id += 1
+            if self.request_id > Interactor.MAX_REQ_ID:
+                self.request_id = 0
+
+            bundle: Bundle = Bundle(self.request_id, ERequest.NONE)
+            if len(line) > 0:
+                if line[0] == 'cmd':
+                    if len(line) > 1:
+                        if line[1] == '-c':
+                            if line[2] == 'camera':
+                                if len(line) > 3:
+                                    bundle.request = ERequest.CAMERA_TAKE_PICTURE
+                                    bundle.args = bytes([int(line[3])])
+                                else:
+                                    print('cmd -c camera [cam_id]')
+                            elif line[2] == 'display':
+                                bundle.request = ERequest.DISPLAY_TAKE_PICTURE
+                            else:
+                                print('cmd -c [camera or display]')
+                        elif line[1] == '-t':
+                            bundle.request = ERequest.CAMERA_TOGGLE_TORCH
+                        elif line[1] == '-d':
+                            if len(line) < 3:
+                                print('cmd -d [filename]')
+                            else:
+                                path = str.join(' ', line[2:])
+                                with open(path, 'rb+') as file:
+                                    bundle.args = file.read()
+                                bundle.request = ERequest.DISPLAY_SHOW_PICTURE
+                        else:
+                            print('cmd [-c(capture) or -t(torch) or -d(display)]')
                     else:
-                        print('cmd -c [camera or display]')
-                elif line[1] == '-t':
-                    bundle.request = ERequest.CAMERA_TOGGLE_TORCH
-                elif line[1] == '-d':
-                    if len(line) < 3:
-                        print('cmd -d [filename]')
-                    else:
-                        path = str.join(' ', line[2:])
-                        with open(path, 'rb+') as file:
-                            bundle.args = file.read()
-                        bundle.request = ERequest.DISPLAY_SHOW_PICTURE
+                        print('cmd [-c(capture) or -t(torch) or -d(display)]')
+                elif line[0] == 'quit':
+                    bundle.request = ERequest.ANY_QUIT
+                    self.camera_handler.request(bundle)
+                    self.display_handler.request(bundle)
+                    break
                 else:
-                    print('cmd [-c(capture) or -t(torch) or -d(display)]')
-            elif line[1] == 'quit':
-                bundle.request_id = self.request_id + 1
-                bundle.request = ERequest.ANY_QUIT
-                self.camera_handler.request(bundle)
-                self.display_handler.request(bundle)
-                break
-            else:
-                print('unknown command')
+                    print('unknown command')
 
             if bundle.request != ERequest.NONE:
-                self.request_id += 1
                 if bundle.request.is_for_camera():
                     if self.camera_handler is None:
                         print('There is no camera')
@@ -111,8 +125,6 @@ class MainConsole(QThread):
                         print('There is no display')
                     else:
                         self.display_handler.request(bundle)
-                else:
-                    self.request_id -= 1
 
     def listen(self):
         print('Listen: Start listening')
