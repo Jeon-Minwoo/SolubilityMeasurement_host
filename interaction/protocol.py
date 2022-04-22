@@ -30,15 +30,16 @@ class Interactor(QThread):
         """
         while True:
             # receive data
+            # TODO: receiving all data from the socket
+            data = self.client.recv(4)
+            length = int.from_bytes(data, byteorder='big')
+            print('Estimated size:', length)
+
             data = b''
-            while self.client:
-                # TODO: receiving all data from the socket
-                buffer = self.client.recv(Interactor.BUFFER_SIZE)
-                if len(buffer) > 0:
-                    data += buffer
-                else:
-                    break
-                print('Total:', len(data), 'bytes,', len(buffer))
+            while len(data) < length:
+                buffer = self.client.recv(length)
+                data += buffer
+            print('Received size:', len(data))
 
             bundle = Bundle.from_bytes(data)
             request_id, request, args, response = bundle

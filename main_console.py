@@ -131,6 +131,7 @@ class MainConsole(QThread):
             # accept client to evaluate
             client, address = self.server.accept()
             print(f'Listen: accept, {address}')
+            client.recv(4)  # skip message length
             data = client.recv(Interactor.BUFFER_SIZE)
             bundle = Bundle.from_bytes(data)
             role = bundle.request
