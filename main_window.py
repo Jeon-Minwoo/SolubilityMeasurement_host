@@ -1,5 +1,4 @@
-from PyQt6 import uic
-from PyQt6.QtCore import QThread, pyqtSlot
+from PyQt5.QtGui import uic
 from threading import Thread
 import socket
 
@@ -8,7 +7,7 @@ from interaction.bundle import Bundle
 from interaction.byte_enum import ERequest, EResponse
 
 
-class MainWindow(QThread):
+class MainWindow:
     """
     A wrapper class for PyQt MainWindow.
     It's also a bridge between server socket and clients.
@@ -92,7 +91,6 @@ class MainWindow(QThread):
 
         interactor.request(self.request_id, request, args)
 
-    @pyqtSlot(Bundle)
     def digest_response(self, bundle: Bundle) -> None:
         """
         Handles response for host request.

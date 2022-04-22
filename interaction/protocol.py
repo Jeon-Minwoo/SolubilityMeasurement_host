@@ -1,10 +1,10 @@
 from interaction.bundle import Bundle
-from typing import Callable, Any
+from typing import Callable
 import socket
-from PyQt6.QtCore import QThread
+from threading import Thread
 
 
-class Interactor(QThread):
+class Interactor(Thread):
     """
     An interactor thread to a client socket.
     It sends, receives request or response to pass it to the MainWindow.

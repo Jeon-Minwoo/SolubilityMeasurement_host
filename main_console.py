@@ -1,6 +1,5 @@
 import socket
 from threading import Thread
-from PyQt6.QtCore import QThread
 
 from interaction.protocol import Interactor
 from interaction.bundle import Bundle
@@ -51,7 +50,7 @@ def handle_client_request(bundle: Bundle) -> Bundle:
     return bundle
 
 
-class MainConsole(QThread):
+class MainConsole(Thread):
     PORT = 58431
 
     def __init__(self):
