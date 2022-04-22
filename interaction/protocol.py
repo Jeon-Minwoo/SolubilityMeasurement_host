@@ -1,5 +1,5 @@
 from interaction.bundle import Bundle
-from typing import Callable
+from typing import Callable, Any
 import socket
 from PyQt6.QtCore import QThread
 
@@ -16,12 +16,14 @@ class Interactor(QThread):
     def __init__(self,
                  client: socket.socket,
                  request_handler: Callable[[Bundle], Bundle],
-                 response_handler: Callable[[Bundle], None]):
+                 response_handler: Callable[[Bundle], None],
+                 on_disconnected: Callable[[], None]):
         super(Interactor, self).__init__()
 
         self.client = client
         self.request_handler = request_handler
         self.response_handler = response_handler
+        self.on_disconnected = on_disconnected
 
     def run(self) -> None:
         """
@@ -30,7 +32,6 @@ class Interactor(QThread):
         """
         while True:
             # receive data
-            # TODO: receiving all data from the socket
             data = self.client.recv(4)
             length = int.from_bytes(data, byteorder='big')
             print('Estimated size:', length)
@@ -41,16 +42,20 @@ class Interactor(QThread):
                 data += buffer
             print('Received size:', len(data))
 
-            bundle = Bundle.from_bytes(data)
-            request_id, request, args, response = bundle
+            if len(data) != 0:
+                bundle = Bundle.from_bytes(data)
+                request_id, request, args, response = bundle
 
-            if request_id == Interactor.CLIENT_REQ_ID:
-                # handle it if it's a request
-                response_bundle = self.request_handler(bundle)
-                self.client.send(response_bundle.bytes())
+                if request_id == Interactor.CLIENT_REQ_ID:
+                    # handle it if it's a request
+                    response_bundle = self.request_handler(bundle)
+                    self.client.send(response_bundle.bytes())
+                else:
+                    # if response, send bundle to window via signal
+                    self.response_handler(bundle)
             else:
-                # if response, send bundle to window via signal
-                self.response_handler(bundle)
+                break
+        self.on_disconnected()
 
     def request(self, bundle: Bundle) -> None:
         """

@@ -107,9 +107,6 @@ class MainConsole(QThread):
                         print('cmd [-c(capture) or -t(torch) or -d(display)]')
                 elif line[0] == 'quit':
                     bundle.request = ERequest.ANY_QUIT
-                    self.camera_handler.request(bundle)
-                    self.display_handler.request(bundle)
-                    break
                 else:
                     print('unknown command')
 
@@ -124,10 +121,17 @@ class MainConsole(QThread):
                         print('There is no display')
                     else:
                         self.display_handler.request(bundle)
+                elif bundle.request.is_for_any():
+                    if self.camera_handler is not None:
+                        self.camera_handler.request(bundle)
+                        self.camera_handler = None
+                    if self.display_handler is not None:
+                        self.display_handler.request(bundle)
+                        self.display_handler = None
 
     def listen(self):
         print('Listen: Start listening')
-        while self.camera_handler is None or self.display_handler is None:
+        while True:
             # accept client to evaluate
             client, address = self.server.accept()
             print(f'Listen: accept, {address}')
@@ -143,7 +147,15 @@ class MainConsole(QThread):
                     bundle.response = EResponse.ERROR
                 else:
                     print(f'Listen: camera, ok')
-                    self.camera_handler = Interactor(client, handle_client_request, digest_response)
+
+                    def on_disconnected():
+                        self.camera_handler = None
+                        print('Camera disconnected')
+
+                    self.camera_handler = Interactor(client,
+                                                     handle_client_request,
+                                                     digest_response,
+                                                     on_disconnected)
                     self.camera_handler.start()
                     bundle.response = EResponse.OK
             elif role == ERequest.DISPLAY:
@@ -152,7 +164,15 @@ class MainConsole(QThread):
                     bundle.response = EResponse.ERROR
                 else:
                     print(f'Listen: display, ok')
-                    self.display_handler = Interactor(client, handle_client_request, digest_response)
+
+                    def on_disconnected():
+                        self.display_handler = None
+                        print('Display disconnected')
+
+                    self.display_handler = Interactor(client,
+                                                      handle_client_request,
+                                                      digest_response,
+                                                      on_disconnected)
                     self.display_handler.start()
                     bundle.response = EResponse.OK
             else:
