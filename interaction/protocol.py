@@ -49,7 +49,7 @@ class Interactor(QThread):
                 if request_id == Interactor.CLIENT_REQ_ID:
                     # handle it if it's a request
                     response_bundle = self.request_handler(bundle)
-                    self.client.send(response_bundle.bytes())
+                    self.send_bundle(response_bundle)
                 else:
                     # if response, send bundle to window via signal
                     self.response_handler(bundle)
@@ -66,4 +66,11 @@ class Interactor(QThread):
         if bundle.request_id > Interactor.MAX_REQ_ID:
             raise ValueError('Out of request id range.')
 
+        self.send_bundle(bundle)
+
+    def send_bundle(self, bundle: Bundle) -> None:
+        data = bundle.bytes()
+        length_bytes = int.to_bytes(len(data), length=4, byteorder='big')
+
+        self.client.send(length_bytes)
         self.client.send(bundle.bytes())
