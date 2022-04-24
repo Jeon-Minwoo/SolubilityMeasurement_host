@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
+ <class>main_window</class>
+ <widget class="QMainWindow" name="main_window">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
     <width>535</width>
-    <height>405</height>
+    <height>430</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>535</width>
-    <height>405</height>
+    <height>430</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>535</width>
-    <height>405</height>
+    <height>430</height>
    </size>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Solubility Measurement</string>
   </property>
-  <widget class="QWidget" name="centralwidget">
-   <widget class="QGraphicsView" name="graphicsView">
+  <widget class="QWidget" name="central_widget">
+   <widget class="QGraphicsView" name="front_camera_view">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -36,7 +36,7 @@
      </rect>
     </property>
    </widget>
-   <widget class="QGraphicsView" name="graphicsView_2">
+   <widget class="QGraphicsView" name="rear_camera_view">
     <property name="geometry">
      <rect>
       <x>270</x>
@@ -46,7 +46,7 @@
      </rect>
     </property>
    </widget>
-   <widget class="QLabel" name="frontCameraLabel">
+   <widget class="QLabel" name="front_camera_label">
     <property name="geometry">
      <rect>
       <x>90</x>
@@ -59,7 +59,7 @@
      <string>Front Camera</string>
     </property>
    </widget>
-   <widget class="QLabel" name="rearCameraLabel">
+   <widget class="QLabel" name="rear_camera_label">
     <property name="geometry">
      <rect>
       <x>350</x>
@@ -72,7 +72,7 @@
      <string>Rear Camera</string>
     </property>
    </widget>
-   <widget class="QGraphicsView" name="graphicsView_3">
+   <widget class="QGraphicsView" name="display_camera_view">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -82,7 +82,7 @@
      </rect>
     </property>
    </widget>
-   <widget class="QPushButton" name="cameraFrontCaptureButton">
+   <widget class="QPushButton" name="front_camera_capture_button">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -95,7 +95,7 @@
      <string>Capture</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="cameraRearCaptureButton">
+   <widget class="QPushButton" name="rear_camera_capture_button">
     <property name="geometry">
      <rect>
       <x>270</x>
@@ -108,7 +108,7 @@
      <string>Capture</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="sendImageToDisplayButton">
+   <widget class="QPushButton" name="display_camera_capture_button">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -118,10 +118,10 @@
      </rect>
     </property>
     <property name="text">
-     <string>Display</string>
+     <string>Capture</string>
     </property>
    </widget>
-   <widget class="QLabel" name="imagePathLabel">
+   <widget class="QLabel" name="display_camera_label">
     <property name="geometry">
      <rect>
       <x>90</x>
@@ -131,7 +131,92 @@
      </rect>
     </property>
     <property name="text">
+     <string>Display Camera</string>
+    </property>
+   </widget>
+   <widget class="QGroupBox" name="client_state_group_box">
+    <property name="geometry">
+     <rect>
+      <x>280</x>
+      <y>210</y>
+      <width>161</width>
+      <height>91</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>Clients</string>
+    </property>
+    <widget class="QLabel" name="camera_state_label">
+     <property name="geometry">
+      <rect>
+       <x>30</x>
+       <y>30</y>
+       <width>81</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Camera</string>
+     </property>
+    </widget>
+    <widget class="QWidget" name="display_state_view" native="true">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>60</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QWidget" name="camera_state_view" native="true">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QLabel" name="display_state_label">
+     <property name="geometry">
+      <rect>
+       <x>30</x>
+       <y>60</y>
+       <width>81</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Display</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QLabel" name="image_path_label">
+    <property name="geometry">
+     <rect>
+      <x>90</x>
+      <y>400</y>
+      <width>231</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
      <string>(Double click here to browse an image.)</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="send_image_to_display_button">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>395</y>
+      <width>75</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Display</string>
     </property>
    </widget>
   </widget>
