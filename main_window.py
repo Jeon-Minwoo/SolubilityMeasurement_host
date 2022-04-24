@@ -1,20 +1,21 @@
-from PyQt5.QtGui import uic
-from threading import Thread
+import os
+import io
+from enum import Enum
 import socket
+from threading import Thread
+
 from PyQt5.QtCore import QSize, QRect, QMetaObject, QCoreApplication, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QPushButton, QGroupBox, QFileDialog
 from PyQt5.QtGui import QColor, QPalette, QPixmap, QMouseEvent, QCloseEvent
+
+import numpy as np
+from PIL import Image
 
 from interaction.protocol import Interactor
 from interaction.bundle import Bundle
 from interaction.byte_enum import ERequest, EResponse
 
 
-class MainWindow:
-    """
-    A wrapper class for PyQt MainWindow.
-    It's also a bridge between server socket and clients.
-    """
 def set_widget_background_color(widget: QWidget, color: QColor):
     palette = widget.palette()
     palette.setColor(QPalette.Window, color)
@@ -38,12 +39,23 @@ def show_image(view: QLabel, data: bytes):
 
 
 class MainWindow(QMainWindow):
+    class Theme(Enum):
+        GRAY = QColor(0x2B2B2B)
+
+        RED = QColor(0xFF0000)
+        GREEN = QColor(0x00FF00)
+        BLUE = QColor(0x0000FF)
+
+        STATE_AVAILABLE = QColor(0x33AA33)
+        STATE_UNAVAILABLE = QColor(0xAA3333)
+
     class ClickableLabel(QLabel):
         double_clicked = pyqtSignal(QMouseEvent)
 
         def mouseDoubleClickEvent(self, a0: QMouseEvent) -> None:
             super().mouseDoubleClickEvent(a0)
             self.double_clicked.emit(a0)
+
     PORT = 58431
     instance = None
 
@@ -135,43 +147,31 @@ class MainWindow(QMainWindow):
 
         self.init_translation()
         self.init_components()
+        self.init_events()
         QMetaObject.connectSlotsByName(self)
+
+        # Starting Socket Interaction
+        self.camera_handler: Interactor = None
+        self.display_handler: Interactor = None
         self.request_id = 0
+        self.capture_requests = {}
+        self.image_path = ''
 
-        # start socket thread
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.bind((socket.INADDR_ANY, MainWindow.PORT))
+        self.server.bind(('0.0.0.0', MainWindow.PORT))
+        self.server.listen(10)
 
-        def listen():
-            while self.camera_handler is None or self.display_handler is None:
-                ''' 
-                Accept both camera and display handler.
-                If occupied role is proposed, send error.
-                If unknown role is proposed, send error.
-                If normal(newly role occupied), send ok.
-                '''
-                # accept client to evaluate
-                client, address = self.server.accept()
-                data = client.recv(Interactor.BUFFER_SIZE)
-                bundle = Bundle.from_bytes(data)
-                role = bundle.request
+        self.listener = Thread(target=MainWindow.listen, args=(self,))
+        self.listener.start()
 
-                # evaluate proposed role
-                if role == ERequest.CAMERA:
-                    if self.camera_handler is not None:
-                        bundle.response = EResponse.ERROR
-                    else:
-                        camera_handler = Interactor(client, MainWindow.handle_client_request)
-                        camera_handler.received_signal.connect(self.digest_response)
-                        bundle.response = EResponse.OK
-                elif role == ERequest.DISPLAY:
-                    if self.display_handler is not None:
-                        bundle.response = EResponse.ERROR
-                    else:
-                        display_handler = Interactor(client, MainWindow.handle_client_request)
-                        display_handler.received_signal.connect(self.digest_response)
-                        bundle.response = EResponse.OK
         MainWindow.instance = self
+
+    def increase_request_id(self) -> int:
+        self.request_id += 1
+        if self.request_id > Interactor.MAX_REQ_ID:
+            self.request_id = 0
+        return self.request_id
+
     def init_translation(self):
         _translate = QCoreApplication.translate
         self.setWindowTitle(_translate("main_window", "Solubility Measurement"))
@@ -209,53 +209,165 @@ class MainWindow(QMainWindow):
         set_widget_background_color(self.display_state_view,
                                     MainWindow.Theme.STATE_UNAVAILABLE.value)
 
-                else:
+    def init_events(self):
+        def request_front_capture(_: QMouseEvent):
+            bundle = Bundle(self.increase_request_id(), ERequest.CAMERA_TAKE_PICTURE, bytes([1]))
+            self.camera_handler.request(bundle)
+            self.capture_requests[bundle.request_id] = 1
+        self.front_camera_capture_button.clicked.connect(request_front_capture)
+
+        def request_rear_capture(_: QMouseEvent):
+            bundle = Bundle(self.increase_request_id(), ERequest.CAMERA_TAKE_PICTURE, bytes([0]))
+            self.camera_handler.request(bundle)
+            self.capture_requests[bundle.request_id] = 0
+        self.rear_camera_capture_button.clicked.connect(request_rear_capture)
+
+        def request_display_capture(_: QMouseEvent):
+            bundle = Bundle(self.increase_request_id(), ERequest.DISPLAY_TAKE_PICTURE)
+            self.display_handler.request(bundle)
+        self.display_camera_capture_button.clicked.connect(request_display_capture)
+
+        def request_displaying_image(_: QMouseEvent):
+            if os.path.exists(self.image_path):
+                with open(self.image_path, 'rb') as file:
+                    image = file.read()
+                bundle = Bundle(self.increase_request_id(), ERequest.DISPLAY_TAKE_PICTURE, image)
+                self.display_handler.request(bundle)
+            else:
+                self.image_path_label.setText("File doesn't exist.")
+        self.send_image_to_display_button.clicked.connect(request_displaying_image)
+
+        def double_clicked(_: QMouseEvent):
+            dialog = QFileDialog(caption='Open image', directory='.', filter='Image files (*.jpg *.jpeg, *.png)')
+            dialog.setFileMode(QFileDialog.ExistingFile)
+            dialog.exec_()
+            file_names = dialog.selectedFiles()
+            if len(file_names) == 0:
+                return
+            self.image_path = file_names[0]
+
+            file_name = self.image_path.split(os.sep)[-1]
+            self.image_path_label.setText(file_name)
+        self.image_path_label.double_clicked.connect(double_clicked)
+
+    def listen(self):
+        print('Listen: Start listening')
+        while True:
+            # accept client to evaluate
+            client, address = self.server.accept()
+            print(f'Listen: accept, {address}')
+            client.recv(4)  # skip message length
+            data = client.recv(Interactor.BUFFER_SIZE)
+            bundle = Bundle.from_bytes(data)
+            role = bundle.request
+
+            # evaluate proposed role
+            if role == ERequest.CAMERA:
+                if self.camera_handler is not None:
+                    print(f'Listen: camera, error')
                     bundle.response = EResponse.ERROR
+                else:
+                    print(f'Listen: camera, ok')
 
-                MainWindow.handle_client_request(bundle)
-        Thread(target=listen, args=()).start()
+                    def on_disconnected():
+                        self.camera_handler = None
+                        self.rear_camera_capture_button.setEnabled(False)
+                        self.front_camera_capture_button.setEnabled(False)
+                        set_widget_background_color(self.camera_state_view,
+                                                    MainWindow.Theme.STATE_UNAVAILABLE.value)
+                        print('Camera disconnected')
 
-    def show(self):
-        self.window.show()
+                    self.camera_handler = Interactor(client,
+                                                     MainWindow.handle_client_request,
+                                                     MainWindow.digest_response,
+                                                     on_disconnected)
+                    self.camera_handler.start()
 
-    # region Networking
+                    self.rear_camera_capture_button.setEnabled(True)
+                    self.front_camera_capture_button.setEnabled(True)
+                    set_widget_background_color(self.camera_state_view,
+                                                MainWindow.Theme.STATE_AVAILABLE.value)
+                    bundle.response = EResponse.OK
+            elif role == ERequest.DISPLAY:
+                if self.display_handler is not None:
+                    print(f'Listen: display, error')
+                    bundle.response = EResponse.ERROR
+                else:
+                    print(f'Listen: display, ok')
 
-    def request(self, request: ERequest, args: bytes) -> None:
-        """
-        Request to an appropriate client with its flag and arguments.
-        :param request: The request flag.
-        :param args: The arguments for the request.
-        :return: None
-        """
-        interactor: Interactor
-        if request.is_for_camera():
-            interactor = self.camera_handler
-        elif request.is_for_display():
-            interactor = self.display_handler
-        else:
-            raise ValueError('Unreachable scope reached. Check EResponse values.')
+                    def on_disconnected():
+                        self.display_handler = None
+                        self.display_camera_capture_button.setEnabled(False)
+                        self.send_image_to_display_button.setEnabled(False)
+                        set_widget_background_color(self.display_state_view,
+                                                    MainWindow.Theme.STATE_UNAVAILABLE.value)
+                        print('Display disconnected')
 
-        self.request_id += 1
-        if self.request_id > Interactor.MAX_REQ_ID:
-            self.request_id = 0
+                    self.display_handler = Interactor(client,
+                                                      MainWindow.handle_client_request,
+                                                      MainWindow.digest_response,
+                                                      on_disconnected)
+                    self.display_handler.start()
 
-        interactor.request(self.request_id, request, args)
+                    self.display_camera_capture_button.setEnabled(True)
+                    self.send_image_to_display_button.setEnabled(True)
+                    set_widget_background_color(self.display_state_view,
+                                                MainWindow.Theme.STATE_AVAILABLE.value)
+                    bundle.response = EResponse.OK
+            else:
+                print(f'Listen: unknown')
+                bundle.response = EResponse.ERROR
 
-    def digest_response(self, bundle: Bundle) -> None:
+            MainWindow.handle_client_request(bundle)
+
+    def closeEvent(self, e: QCloseEvent) -> None:
+        super(QMainWindow, self).closeEvent(e)
+
+        if self.camera_handler is not None:
+            self.camera_handler.interrupt()
+        if self.display_handler is not None:
+            self.display_handler.interrupt()
+
+    @staticmethod
+    def digest_response(bundle: Bundle) -> None:
         """
         Handles response for host request.
         :param bundle: The bundle instance for the request.
         :return: None
         """
-        # TODO: digest_response()
+        window: MainWindow = MainWindow.instance
+        if window is None:
+            return
+
+        print(f'ClientResp: {bundle}')
         if bundle.request == ERequest.CAMERA_TAKE_PICTURE:
-            pass
+            cam_id = window.capture_requests[bundle.request_id]
+            del window.capture_requests[bundle.request_id]
+
+            is_valid = True
+            if cam_id == 0:
+                show_image(window.rear_camera_view, bundle.args)
+            elif cam_id == 1:
+                show_image(window.front_camera_view, bundle.args)
+            else:
+                is_valid = False
+
+            if is_valid:
+                img = Image.open(io.BytesIO(bundle.args))
+                img = np.array(img)
+                MainWindow.process_image(img)
         elif bundle.request == ERequest.CAMERA_TOGGLE_TORCH:
-            pass
+            print('Toggle OK')
         elif bundle.request == ERequest.DISPLAY_TAKE_PICTURE:
-            pass
+            show_image(window.display_camera_view, bundle.args)
+            img = Image.open(io.BytesIO(bundle.args))
+            img = np.array(img)
+            MainWindow.process_image(img)
         elif bundle.request == ERequest.DISPLAY_SHOW_PICTURE:
-            pass
+            print('Display OK')
+        else:
+            print('Unknown')
+        print()
 
     @staticmethod
     def handle_client_request(bundle: Bundle) -> Bundle:
@@ -266,10 +378,13 @@ class MainWindow(QMainWindow):
         """
         if bundle.request == ERequest.ANY_QUIT:
             bundle.response = EResponse.ACK
-            # TODO: show in dashboard
         else:
             bundle.response = EResponse.REJECT
 
+        print(f'ClientReq: {bundle}')
         return bundle
 
-    # endregion
+    @staticmethod
+    def process_image(image: np.array):
+        # TODO: process image
+        pass
