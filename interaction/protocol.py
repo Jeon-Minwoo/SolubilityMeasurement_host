@@ -24,13 +24,15 @@ class Interactor(Thread):
         self.request_handler = request_handler
         self.response_handler = response_handler
         self.on_disconnected = on_disconnected
+        self.stop = True
 
     def run(self) -> None:
         """
         Main routine for this thread.
         :return: None
         """
-        while True:
+        self.stop = False
+        while not self.stop:
             # receive data
             data = self.client.recv(4)
             length = int.from_bytes(data, byteorder='big')
@@ -74,3 +76,6 @@ class Interactor(Thread):
 
         self.client.send(length_bytes)
         self.client.send(bundle.bytes())
+
+    def interrupt(self):
+        self.stop = True
