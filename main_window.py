@@ -5,7 +5,7 @@ import socket
 from threading import Thread
 
 from PyQt5.QtCore import QSize, QRect, QMetaObject, QCoreApplication, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QPushButton, QGroupBox, QFileDialog
+from PyQt5.QtWidgets import QMainWindow, QWidget, QLabel, QPushButton, QGroupBox, QFileDialog
 from PyQt5.QtGui import QColor, QPalette, QPixmap, QMouseEvent, QCloseEvent
 
 import numpy as np
