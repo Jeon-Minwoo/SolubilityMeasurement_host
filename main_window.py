@@ -214,24 +214,30 @@ class MainWindow(QMainWindow):
 
     def init_events(self):
         def request_front_capture(_: QMouseEvent):
+            self.front_camera_capture_button.setEnabled(False)
+            self.rear_camera_capture_button.setEnabled(False)
             bundle = Bundle(self.increase_request_id(), ERequest.CAMERA_TAKE_PICTURE, bytes([1]))
             self.camera_handler.request(bundle)
             self.capture_requests[bundle.request_id] = 1
         self.front_camera_capture_button.clicked.connect(request_front_capture)
 
         def request_rear_capture(_: QMouseEvent):
+            self.front_camera_capture_button.setEnabled(False)
+            self.rear_camera_capture_button.setEnabled(False)
             bundle = Bundle(self.increase_request_id(), ERequest.CAMERA_TAKE_PICTURE, bytes([0]))
             self.camera_handler.request(bundle)
             self.capture_requests[bundle.request_id] = 0
         self.rear_camera_capture_button.clicked.connect(request_rear_capture)
 
         def request_display_capture(_: QMouseEvent):
+            self.display_camera_capture_button.setEnabled(False)
             bundle = Bundle(self.increase_request_id(), ERequest.DISPLAY_TAKE_PICTURE)
             self.display_handler.request(bundle)
         self.display_camera_capture_button.clicked.connect(request_display_capture)
 
         def request_displaying_image(_: QMouseEvent):
             if os.path.exists(self.image_path):
+                self.send_image_to_display_button.setEnabled(False)
                 with open(self.image_path, 'rb') as file:
                     image = file.read()
                 bundle = Bundle(self.increase_request_id(), ERequest.DISPLAY_TAKE_PICTURE, image)
@@ -251,6 +257,8 @@ class MainWindow(QMainWindow):
 
             file_name = self.image_path.split(os.sep)[-1]
             self.image_path_label.setText(file_name)
+
+            self.send_image_to_display_button.setEnabled(True)
 
         # noinspection PyUnresolvedReferences
         self.image_path_label.double_clicked.connect(double_clicked)
@@ -315,7 +323,6 @@ class MainWindow(QMainWindow):
                     self.display_handler.start()
 
                     self.display_camera_capture_button.setEnabled(True)
-                    self.send_image_to_display_button.setEnabled(True)
                     set_widget_background_color(self.display_state_view,
                                                 MainWindow.Theme.STATE_AVAILABLE.value)
                     bundle.response = EResponse.OK
@@ -358,6 +365,8 @@ class MainWindow(QMainWindow):
                 is_valid = False
 
             if is_valid:
+                window.front_camera_capture_button.setEnabled(True)
+                window.rear_camera_capture_button.setEnabled(True)
                 img = Image.open(io.BytesIO(bundle.args))
                 img = np.array(img)
                 MainWindow.process_image(img)
@@ -368,8 +377,14 @@ class MainWindow(QMainWindow):
             img = Image.open(io.BytesIO(bundle.args))
             img = np.array(img)
             MainWindow.process_image(img)
+            window.display_camera_capture_button.setEnabled(True)
         elif bundle.request == ERequest.DISPLAY_SHOW_PICTURE:
             print('Display OK')
+            if bundle.response == EResponse.OK:
+                window.image_path_label.setText('Image displayed.')
+                window.image_path = ''
+            elif bundle.response == EResponse.ERROR:
+                window.image_path_label.setText('Error occurred.')
         else:
             print('Unknown')
         print()
