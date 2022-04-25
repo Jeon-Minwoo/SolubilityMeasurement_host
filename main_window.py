@@ -54,11 +54,13 @@ class MainWindow(QMainWindow):
 
         def mouseDoubleClickEvent(self, a0: QMouseEvent) -> None:
             super().mouseDoubleClickEvent(a0)
+            # noinspection PyUnresolvedReferences
             self.double_clicked.emit(a0)
 
     PORT = 58431
     instance = None
 
+    # noinspection PyTypeChecker
     def __init__(self):
         super(QMainWindow, self).__init__()
 
@@ -248,6 +250,8 @@ class MainWindow(QMainWindow):
 
             file_name = self.image_path.split(os.sep)[-1]
             self.image_path_label.setText(file_name)
+
+        # noinspection PyUnresolvedReferences
         self.image_path_label.double_clicked.connect(double_clicked)
 
     def listen(self):
@@ -332,7 +336,7 @@ class MainWindow(QMainWindow):
     def digest_response(bundle: Bundle) -> None:
         """
         Handles response for host request.
-        :param bundle: The bundle instance for the request.
+        :param: bundle: The bundle instance for the request.
         :return: None
         """
         window: MainWindow = MainWindow.instance
@@ -373,7 +377,7 @@ class MainWindow(QMainWindow):
     def handle_client_request(bundle: Bundle) -> Bundle:
         """
         Handles request from camera client.
-        :param bundle: The bundle for the request.
+        :param: bundle: The bundle for the request.
         :return: Response flag for the request.
         """
         if bundle.request == ERequest.ANY_QUIT:
