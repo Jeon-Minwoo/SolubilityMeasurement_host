@@ -379,7 +379,6 @@ class MainWindow(QMainWindow):
             MainWindow.process_image(img)
             window.display_camera_capture_button.setEnabled(True)
         elif bundle.request == ERequest.DISPLAY_SHOW_PICTURE:
-            print('Display OK')
             if bundle.response == EResponse.OK:
                 window.image_path_label.setText('Image displayed.')
                 window.image_path = ''
