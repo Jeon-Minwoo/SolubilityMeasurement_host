@@ -240,13 +240,13 @@ class MainWindow(QMainWindow):
                 self.send_image_to_display_button.setEnabled(False)
                 with open(self.image_path, 'rb') as file:
                     image = file.read()
-                bundle = Bundle(self.increase_request_id(), ERequest.DISPLAY_TAKE_PICTURE, image)
+                bundle = Bundle(self.increase_request_id(), ERequest.DISPLAY_SHOW_PICTURE, image)
                 self.display_handler.request(bundle)
             else:
                 self.image_path_label.setText("File doesn't exist.")
         self.send_image_to_display_button.clicked.connect(request_displaying_image)
 
-        def double_clicked(_: QMouseEvent):
+        def browse_image(_: QMouseEvent):
             dialog = QFileDialog(caption='Open image', directory='.', filter='Image files (*.jpg *.jpeg, *.png)')
             dialog.setFileMode(QFileDialog.ExistingFile)
             dialog.exec_()
@@ -261,7 +261,7 @@ class MainWindow(QMainWindow):
             self.send_image_to_display_button.setEnabled(True)
 
         # noinspection PyUnresolvedReferences
-        self.image_path_label.double_clicked.connect(double_clicked)
+        self.image_path_label.double_clicked.connect(browse_image)
 
     def listen(self):
         print('Listen: Start listening')
