@@ -3,7 +3,6 @@ import io
 from typing import Any
 from enum import Enum
 import socket
-from threading import Thread
 
 from PyQt5.QtCore import QSize, QRect, QMetaObject, QCoreApplication, pyqtSignal
 from PyQt5.QtWidgets import QMainWindow, QWidget, QLabel, QPushButton, QGroupBox, QFileDialog
@@ -12,6 +11,7 @@ from PyQt5.QtGui import QColor, QPalette, QPixmap, QMouseEvent, QCloseEvent
 import numpy as np
 from PIL import Image
 
+from interruptable_thread import InterruptableThread
 from interaction.protocol import Interactor
 from interaction.bundle import Bundle
 from interaction.byte_enum import ERequest, EResponse
@@ -76,7 +76,7 @@ class MainWindow(QMainWindow):
 
         # Camera Client
         self.torch_toggle_button = QPushButton(self.central_widget)
-        self.torch_toggle_button.setGeometry(QRect(280, 210, 75, 23))  # TODO
+        self.torch_toggle_button.setGeometry(QRect(280, 210, 75, 23))
         self.torch_toggle_button.setObjectName("torch_toggle_button")
 
         # # Front Camera
@@ -168,7 +168,7 @@ class MainWindow(QMainWindow):
         self.server.bind(('0.0.0.0', MainWindow.PORT))
         self.server.listen(10)
 
-        self.listener = Thread(target=MainWindow.listen, args=(self,))
+        self.listener = InterruptableThread(MainWindow.listen, (self,))
         self.listener.start()
 
         MainWindow.instance = self
@@ -280,80 +280,85 @@ class MainWindow(QMainWindow):
         print('Listen: Start listening')
         while True:
             # accept client to evaluate
-            client, address = self.server.accept()
-            print(f'Listen: accept, {address}')
-            client.recv(4)  # skip message length
-            data = client.recv(Interactor.BUFFER_SIZE)
-            bundle = Bundle.from_bytes(data)
-            role = bundle.request
+            try:
+                client, address = self.server.accept()
+                print(f'Listen: accept, {address}')
+                client.recv(4)  # skip message length
+                data = client.recv(Interactor.BUFFER_SIZE)
+                bundle = Bundle.from_bytes(data)
+                role = bundle.request
 
-            # evaluate proposed role
-            if role == ERequest.CAMERA:
-                if self.camera_handler is not None:
-                    print(f'Listen: camera, error')
-                    bundle.response = EResponse.ERROR
-                else:
-                    print(f'Listen: camera, ok')
+                # evaluate proposed role
+                if role == ERequest.CAMERA:
+                    if self.camera_handler is not None:
+                        print(f'Listen: camera, error')
+                        bundle.response = EResponse.ERROR
+                    else:
+                        print(f'Listen: camera, ok')
 
-                    def on_disconnected():
-                        self.camera_handler = None
-                        self.torch_toggle_button.setEnabled(False)
-                        self.rear_camera_capture_button.setEnabled(False)
-                        self.front_camera_capture_button.setEnabled(False)
+                        def on_disconnected():
+                            self.camera_handler = None
+                            self.torch_toggle_button.setEnabled(False)
+                            self.rear_camera_capture_button.setEnabled(False)
+                            self.front_camera_capture_button.setEnabled(False)
+                            set_widget_background_color(self.camera_state_view,
+                                                        MainWindow.Theme.STATE_UNAVAILABLE.value)
+                            print('Camera disconnected')
+
+                        self.camera_handler = Interactor(client,
+                                                         MainWindow.handle_client_request,
+                                                         MainWindow.digest_response,
+                                                         on_disconnected)
+                        self.camera_handler.start()
+
+                        self.torch_toggle_button.setEnabled(True)
+                        self.rear_camera_capture_button.setEnabled(True)
+                        self.front_camera_capture_button.setEnabled(True)
                         set_widget_background_color(self.camera_state_view,
-                                                    MainWindow.Theme.STATE_UNAVAILABLE.value)
-                        print('Camera disconnected')
+                                                    MainWindow.Theme.STATE_AVAILABLE.value)
+                        bundle.response = EResponse.OK
+                elif role == ERequest.DISPLAY:
+                    if self.display_handler is not None:
+                        print(f'Listen: display, error')
+                        bundle.response = EResponse.ERROR
+                    else:
+                        print(f'Listen: display, ok')
 
-                    self.camera_handler = Interactor(client,
-                                                     MainWindow.handle_client_request,
-                                                     MainWindow.digest_response,
-                                                     on_disconnected)
-                    self.camera_handler.start()
+                        def on_disconnected():
+                            self.display_handler = None
+                            self.display_camera_capture_button.setEnabled(False)
+                            self.send_image_to_display_button.setEnabled(False)
+                            set_widget_background_color(self.display_state_view,
+                                                        MainWindow.Theme.STATE_UNAVAILABLE.value)
+                            print('Display disconnected')
 
-                    self.torch_toggle_button.setEnabled(True)
-                    self.rear_camera_capture_button.setEnabled(True)
-                    self.front_camera_capture_button.setEnabled(True)
-                    set_widget_background_color(self.camera_state_view,
-                                                MainWindow.Theme.STATE_AVAILABLE.value)
-                    bundle.response = EResponse.OK
-            elif role == ERequest.DISPLAY:
-                if self.display_handler is not None:
-                    print(f'Listen: display, error')
-                    bundle.response = EResponse.ERROR
-                else:
-                    print(f'Listen: display, ok')
+                        self.display_handler = Interactor(client,
+                                                          MainWindow.handle_client_request,
+                                                          MainWindow.digest_response,
+                                                          on_disconnected)
+                        self.display_handler.start()
 
-                    def on_disconnected():
-                        self.display_handler = None
-                        self.display_camera_capture_button.setEnabled(False)
-                        self.send_image_to_display_button.setEnabled(False)
+                        self.display_camera_capture_button.setEnabled(True)
                         set_widget_background_color(self.display_state_view,
-                                                    MainWindow.Theme.STATE_UNAVAILABLE.value)
-                        print('Display disconnected')
+                                                    MainWindow.Theme.STATE_AVAILABLE.value)
+                        bundle.response = EResponse.OK
+                else:
+                    print(f'Listen: unknown')
+                    bundle.response = EResponse.ERROR
 
-                    self.display_handler = Interactor(client,
-                                                      MainWindow.handle_client_request,
-                                                      MainWindow.digest_response,
-                                                      on_disconnected)
-                    self.display_handler.start()
-
-                    self.display_camera_capture_button.setEnabled(True)
-                    set_widget_background_color(self.display_state_view,
-                                                MainWindow.Theme.STATE_AVAILABLE.value)
-                    bundle.response = EResponse.OK
-            else:
-                print(f'Listen: unknown')
-                bundle.response = EResponse.ERROR
-
-            MainWindow.handle_client_request(bundle)
+                MainWindow.handle_client_request(bundle)
+            except OSError:
+                break
 
     def closeEvent(self, e: QCloseEvent) -> None:
-        super(QMainWindow, self).closeEvent(e)
-
         if self.camera_handler is not None:
             self.camera_handler.interrupt()
         if self.display_handler is not None:
             self.display_handler.interrupt()
+        self.listener.interrupt()
+        self.server.close()
+
+        super(QMainWindow, self).closeEvent(e)
 
     @staticmethod
     def digest_response(bundle: Bundle) -> None:
