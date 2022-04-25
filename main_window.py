@@ -1,5 +1,6 @@
 import os
 import io
+from typing import Any
 from enum import Enum
 import socket
 from threading import Thread
@@ -389,6 +390,6 @@ class MainWindow(QMainWindow):
         return bundle
 
     @staticmethod
-    def process_image(image: np.array):
+    def process_image(image: np.array) -> Any:
         # TODO: process image
         pass
