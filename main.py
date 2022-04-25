@@ -6,7 +6,7 @@ from main_console import MainConsole
 if __name__ == '__main__':
     print('W(indow) / C(onsole) / Q(uit)')
     mode = '-'
-    while mode in 'wcq':
+    while mode not in 'wcq':
         print('>> ', end='')
         mode = input()[0].lower()
 
