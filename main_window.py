@@ -75,6 +75,10 @@ class MainWindow(QMainWindow):
         self.central_widget.setObjectName("central_widget")
 
         # Camera Client
+        self.torch_toggle_button = QPushButton(self.central_widget)
+        self.torch_toggle_button.setGeometry(QRect(280, 210, 75, 23))  # TODO
+        self.torch_toggle_button.setObjectName("torch_toggle_button")
+
         # # Front Camera
         self.front_camera_view = QLabel(self.central_widget)
         self.front_camera_view.setGeometry(QRect(10, 10, 256, 158))
@@ -126,7 +130,7 @@ class MainWindow(QMainWindow):
 
         # Client States
         self.client_state_group_box = QGroupBox(self.central_widget)
-        self.client_state_group_box.setGeometry(QRect(280, 210, 161, 91))
+        self.client_state_group_box.setGeometry(QRect(280, 238, 161, 91))
         self.client_state_group_box.setObjectName("client_state_group_box")
 
         self.camera_state_view = QWidget(self.client_state_group_box)
@@ -179,6 +183,8 @@ class MainWindow(QMainWindow):
         _translate = QCoreApplication.translate
         self.setWindowTitle(_translate("main_window", "Solubility Measurement"))
 
+        self.torch_toggle_button.setText(_translate("main_window", "Torch"))
+
         self.front_camera_capture_button.setText(_translate("main_window", "Capture"))
         self.front_camera_label.setText(_translate("main_window", "Front Camera"))
 
@@ -203,6 +209,7 @@ class MainWindow(QMainWindow):
         set_widget_background_color(self.camera_state_view, MainWindow.Theme.STATE_AVAILABLE.value)
         set_widget_background_color(self.display_state_view, MainWindow.Theme.STATE_UNAVAILABLE.value)
 
+        self.torch_toggle_button.setEnabled(False)
         self.front_camera_capture_button.setEnabled(False)
         self.rear_camera_capture_button.setEnabled(False)
         self.display_camera_capture_button.setEnabled(False)
@@ -213,6 +220,12 @@ class MainWindow(QMainWindow):
                                     MainWindow.Theme.STATE_UNAVAILABLE.value)
 
     def init_events(self):
+        def request_toggle_torch(_: QMouseEvent):
+            self.torch_toggle_button.setEnabled(False)
+            bundle = Bundle(self.increase_request_id(), ERequest.CAMERA_TOGGLE_TORCH)
+            self.camera_handler.request(bundle)
+        self.torch_toggle_button.clicked.connect(request_toggle_torch)
+
         def request_front_capture(_: QMouseEvent):
             self.front_camera_capture_button.setEnabled(False)
             self.rear_camera_capture_button.setEnabled(False)
@@ -284,6 +297,7 @@ class MainWindow(QMainWindow):
 
                     def on_disconnected():
                         self.camera_handler = None
+                        self.torch_toggle_button.setEnabled(False)
                         self.rear_camera_capture_button.setEnabled(False)
                         self.front_camera_capture_button.setEnabled(False)
                         set_widget_background_color(self.camera_state_view,
@@ -296,6 +310,7 @@ class MainWindow(QMainWindow):
                                                      on_disconnected)
                     self.camera_handler.start()
 
+                    self.torch_toggle_button.setEnabled(True)
                     self.rear_camera_capture_button.setEnabled(True)
                     self.front_camera_capture_button.setEnabled(True)
                     set_widget_background_color(self.camera_state_view,
@@ -372,6 +387,7 @@ class MainWindow(QMainWindow):
                 MainWindow.process_image(img)
         elif bundle.request == ERequest.CAMERA_TOGGLE_TORCH:
             print('Toggle OK')
+            window.torch_toggle_button.setEnabled(True)
         elif bundle.request == ERequest.DISPLAY_TAKE_PICTURE:
             show_image(window.display_camera_view, bundle.args)
             img = Image.open(io.BytesIO(bundle.args))
