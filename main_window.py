@@ -27,6 +27,7 @@ def set_widget_background_color(widget: QWidget, color: QColor):
 
 
 def show_image(view: QLabel, data: bytes):
+    # TODO: Convert YUV_420_888 data to JPEG
     pixmap = QPixmap()
     if pixmap.loadFromData(data, 'JPEG'):
         if pixmap.width() > pixmap.height():
