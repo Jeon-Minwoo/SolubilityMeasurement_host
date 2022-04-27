@@ -4,9 +4,10 @@ from typing import Any
 from enum import Enum
 import socket
 
+import PIL.Image
 from PyQt5.QtCore import QSize, QRect, QMetaObject, QCoreApplication, pyqtSignal
 from PyQt5.QtWidgets import QMainWindow, QWidget, QLabel, QPushButton, QGroupBox, QFileDialog
-from PyQt5.QtGui import QColor, QPalette, QPixmap, QMouseEvent, QCloseEvent
+from PyQt5.QtGui import QColor, QPalette, QPixmap, QMouseEvent, QCloseEvent, QImage
 
 import numpy as np
 from PIL import Image
@@ -28,7 +29,16 @@ def set_widget_background_color(widget: QWidget, color: QColor):
 
 def show_image(view: QLabel, data: bytes):
     # TODO: Convert YUV_420_888 data to JPEG
-    pixmap = QPixmap()
+    from cv2 import cv2
+
+    encoded_img = np.fromstring(data, dtype=np.uint8)
+    img = cv2.imdecode(encoded_img, cv2.IMREAD_COLOR)
+    img_rgb = cv2.cvtColor(img, img, cv2.COLOR_YUV420P2RGB)
+
+    img_rgb = np.asarray(img_rgb)
+    img = QImage(img_rgb, img_rgb.shape[1], img_rgb.shape[0], QImage.Format_RGB888)
+
+    pixmap = QPixmap(img)
     if pixmap.loadFromData(data, 'JPEG'):
         if pixmap.width() > pixmap.height():
             pixmap = pixmap.scaledToWidth(view.width())
