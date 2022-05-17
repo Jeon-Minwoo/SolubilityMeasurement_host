@@ -4,6 +4,7 @@ from typing import Any
 from enum import Enum
 import socket
 
+import cv2.cv2 as cv2
 from PyQt5.QtCore import QSize, QRect, QMetaObject, QCoreApplication, pyqtSignal
 from PyQt5.QtWidgets import QMainWindow, QWidget, QLabel, QPushButton, QGroupBox, QFileDialog
 from PyQt5.QtGui import QColor, QPalette, QPixmap, QMouseEvent, QCloseEvent
@@ -250,7 +251,7 @@ class MainWindow(QMainWindow):
 
         def request_displaying_image(_: QMouseEvent):
             if os.path.exists(self.image_path):
-                self.send_image_to_display_button.setEnabled(False)
+                # self.send_image_to_display_button.setEnabled(False)
                 with open(self.image_path, 'rb') as file:
                     image = file.read()
                 bundle = Bundle(self.increase_request_id(), ERequest.DISPLAY_SHOW_PICTURE, image)
@@ -427,4 +428,8 @@ class MainWindow(QMainWindow):
     @staticmethod
     def process_image(image: np.array) -> Any:
         # TODO: process image
+
+        import PIL
+        img = PIL.Image.fromarray(image)
+        img.save('./img.jpeg')
         pass

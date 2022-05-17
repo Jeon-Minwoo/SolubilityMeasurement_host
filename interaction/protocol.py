@@ -3,6 +3,8 @@ from typing import Callable
 import socket
 from threading import Thread
 
+from interaction.byte_enum import ERequest
+
 
 class Interactor(Thread):
     """
@@ -25,6 +27,7 @@ class Interactor(Thread):
         self.response_handler = response_handler
         self.on_disconnected = on_disconnected
         self.stop = True
+        self.last_bundle = None
 
     def run(self) -> None:
         """
@@ -50,8 +53,13 @@ class Interactor(Thread):
 
                 if request_id == Interactor.CLIENT_REQ_ID:
                     # handle it if it's a request
-                    response_bundle = self.request_handler(bundle)
-                    self.send_bundle(response_bundle)
+                    if bundle.request == ERequest.ANY_AGAIN:
+                        if self.last_bundle is not None:
+                            self.send_bundle(self.last_bundle)
+                            self.last_bundle = None
+                    else:
+                        response_bundle = self.request_handler(bundle)
+                        self.send_bundle(response_bundle)
                 else:
                     # if response, send bundle to window via signal
                     self.response_handler(bundle)
@@ -74,8 +82,10 @@ class Interactor(Thread):
         data = bundle.bytes()
         length_bytes = int.to_bytes(len(data), length=4, byteorder='big')
 
+        self.last_bundle = bundle
+
         self.client.send(length_bytes)
-        self.client.send(bundle.bytes())
+        self.client.send(bundle.bytes() + b'\x00' * 1020)
 
     def interrupt(self):
         self.stop = True

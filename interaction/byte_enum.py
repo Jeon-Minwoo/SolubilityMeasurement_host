@@ -50,6 +50,8 @@ class ERequest(ByteEnum):
 
     ANY_QUIT = ANY | 0x10
     """Request to terminate connection."""
+    ANY_AGAIN = ANY | 0x20
+    """Request to get the last bundle again."""
 
     def is_for(self, request):
         value = request.int()
